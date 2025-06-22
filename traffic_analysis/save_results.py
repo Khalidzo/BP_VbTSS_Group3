@@ -1,0 +1,44 @@
+import matplotlib.pyplot as plt
+
+
+class ResultsSaver:
+    @staticmethod
+    def save_jam_evaluation(zone_jam_intervals, fps, log_path="jam_evaluation.txt",
+                            plot_path="jam_evaluation_plot.png"):
+        """Saves jam detection results to a log file and generates a plot."""
+        # Save to text file
+        with open(log_path, "w") as f:
+            for zone_idx, intervals in enumerate(zone_jam_intervals):
+                f.write(f"Zone {zone_idx + 1}:\n")
+                if not intervals:
+                    f.write("  No jams detected.\n")
+                else:
+                    for start_f, end_f in intervals:
+                        start_s = round(start_f / fps, 2)
+                        end_s = round(end_f / fps, 2)
+                        f.write(f"  Jam from {start_s}s to {end_s}s\n")
+
+        print(f"Results saved to: {log_path}")
+
+        # Generate plot
+        ResultsSaver._create_jam_intervals_plot(zone_jam_intervals, fps, plot_path)
+        print(f"Plot saved to: {plot_path}")
+
+    @staticmethod
+    def _create_jam_intervals_plot(zone_jam_intervals, fps, plot_path):
+        """Creates and saves a bar chart showing jam intervals."""
+        plt.figure(figsize=(12, max(1, len(zone_jam_intervals))))
+
+        for i, intervals in enumerate(zone_jam_intervals):
+            for (start_f, end_f) in intervals:
+                start_s = start_f / fps
+                end_s = end_f / fps
+                plt.barh(y=i, width=end_s - start_s, left=start_s, height=0.4, color="red")
+
+        plt.yticks(range(len(zone_jam_intervals)), [f"Zone {i + 1}" for i in range(len(zone_jam_intervals))])
+        plt.xlabel("Time (s)")
+        plt.title("Traffic Jam Intervals per Zone (Model Prediction)")
+        plt.grid(axis="x", linestyle="--", alpha=0.6)
+        plt.tight_layout()
+        plt.savefig(plot_path)
+        plt.close()

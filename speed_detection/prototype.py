@@ -95,7 +95,6 @@ def project_to_ground(img_pt):
     return pos3d
 
 
-
 def horizontal_distance(p1, p2):
     return np.linalg.norm(p1[[0, 2]] - p2[[0, 2]])
 
@@ -270,7 +269,6 @@ while True:
     scaled = cv.resize(frame, (scaled_w, scaled_h))
     cv.imshow("frame", scaled)
 
-    
     if cv.waitKey(1) & 0xFF == ord("q"):
         break
 

@@ -26,6 +26,7 @@ class SpeedEstimator(VideoFeatureProcessor):
         self.tracker = BYTETracker(track_thresh=0.3, track_buffer=30, match_thresh=0.7)
 
     def get_user_input(self, first_frame):
+        print("\n💨 Speed Detection - Select ROIs")
         n_rois = int(
             input("\nHow many ROIs do you want to select? (Enter an integer)\n> ")
         )

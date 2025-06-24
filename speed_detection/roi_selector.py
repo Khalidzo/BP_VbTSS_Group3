@@ -1,4 +1,5 @@
 import cv2 as cv
+from matplotlib.pylab import f
 import numpy as np
 from .config import (
     FONT,
@@ -15,6 +16,7 @@ from .config import (
 
 class ROISelector:
     def __init__(self, first_frame, n_rois):
+        self.selection_window_name = "Speed Detection - Select ROIs"
         self.first_frame = first_frame
         self.n_rois = n_rois
         self.roi_data = []
@@ -218,8 +220,8 @@ class ROISelector:
 
     def select_rois(self):
         """Main method to run ROI selection interface"""
-        cv.namedWindow("Select")
-        cv.setMouseCallback("Select", self._on_mouse)
+        cv.namedWindow(self.selection_window_name)
+        cv.setMouseCallback(self.selection_window_name, self._on_mouse)
         sel_img = self.first_frame.copy()
 
         # UI Loop
@@ -246,18 +248,19 @@ class ROISelector:
             # Draw visualization elements
             self._draw_visualization(vis)
 
-            cv.imshow("Select", vis)
+            cv.imshow(self.selection_window_name, vis)
             k = cv.waitKey(20) & 0xFF
 
             if k == 27:  # ESC key
-                cv.destroyWindow("Select")
+                cv.destroyWindow(self.selection_window_name)
                 return None  # User cancelled
 
             if k == ord(" "):  # Space key
                 if self._handle_space_key():
                     break
-
-        cv.destroyWindow("Select")
+        
+        print(f"\nROI selection completed. {self.current_roi} ROIs configured.")
+        cv.destroyWindow(self.selection_window_name)
         return self.roi_data
 
     def calculate_perspective_transforms(self, pixels_per_meter=30):

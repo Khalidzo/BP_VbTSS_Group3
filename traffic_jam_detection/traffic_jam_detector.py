@@ -10,7 +10,7 @@ class TrafficJamDetector:
     def __init__(self):
         self.tracker = Tracker(distance_function="euclidean", distance_threshold=30)
 
-        self.selection_window_name = "🚦Traffic Jam Detection - Select ROIs"
+        self.selection_window_name = "Traffic Jam Detection - Select ROIs"
 
         # ROI selection variables
         self.current_polygon = []

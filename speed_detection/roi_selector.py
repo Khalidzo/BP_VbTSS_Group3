@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from config import (
+from .config import (
     FONT,
     COL_RED,
     COL_GRN,

@@ -1,7 +1,7 @@
 import cv2 as cv
 import json
 import pickle
-from speed_detection.config import PIXELS_PER_METER, YOLO_THRESHOLD, YOLO_CLASSES
+from speed_detection.config import PIXELS_PER_METER
 from ultralytics import YOLO
 from speed_detection.byte_tracker import BYTETracker, Track
 from speed_detection.roi_selector import ROISelector
@@ -41,10 +41,8 @@ if roi_data is None:
     exit()
 
 # Calculate perspective transforms
-
 roi_selector.calculate_perspective_transforms(PIXELS_PER_METER)
 
-# ──────── Initialize Tracking Components ────────
 # ByteTrack Tracker
 tracker = BYTETracker(track_thresh=0.3, track_buffer=30, match_thresh=0.7)
 
@@ -106,7 +104,7 @@ while cap.isOpened():
     byte_tracks = tracker.update(bboxes, scores, class_ids)
     tracks = [Track(t) for t in byte_tracks]
 
-    # 🔁 Process all ROIs and tracks in one clean function
+    # Process all ROIs and tracks
     process_rois_for_frame(tracks, roi_data, vehicle_data, current_time, dt)
 
     # Draw tracks and speed annotations

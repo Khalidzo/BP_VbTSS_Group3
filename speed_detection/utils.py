@@ -1,5 +1,5 @@
 import cv2 as cv
-from config import YOLO_THRESHOLD, YOLO_CLASSES
+from .config import YOLO_THRESHOLD, YOLO_CLASSES
 
 
 def draw_label_with_bg(

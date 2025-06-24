@@ -1,0 +1,10 @@
+numpy~=1.26.4
+matplotlib~=3.10.1
+scikit-image~=0.25.2
+filterpy~=1.4.5
+opencv-python~=4.10.0.84
+cvzone~=1.6.1
+imutils~=0.5.4
+ultralytics~=8.3.131
+torch~=2.6.0+cu124
+norfair~=2.3.0

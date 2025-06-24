@@ -1,16 +1,16 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from ultralytics import YOLO
-from norfair import Detection, Tracker
+from norfair.tracker import Detection, Tracker
 from collections import deque
-from config import Config
+from traffic_jam_detection.config import Config
+
 
 
 class TrafficJamDetector:
-    def __init__(self, yolo_weights_path="Yolo-Weights/yolo12n.pt"):
-        self.yolo_model = YOLO(yolo_weights_path)
+    def __init__(self):
         self.tracker = Tracker(distance_function="euclidean", distance_threshold=30)
+
+        self.selection_window_name = "🚦Traffic Jam Detection - Select ROIs"
 
         # ROI selection variables
         self.current_polygon = []
@@ -38,13 +38,13 @@ class TrafficJamDetector:
     def _select_rois(self, frame):
         """ROI selection similar to code 1's roi_selector"""
         display_frame = frame.copy()
-        cv2.namedWindow("Select ROIs")
-        cv2.setMouseCallback("Select ROIs", self._draw_polygon_callback)
+        cv2.namedWindow(self.selection_window_name)
+        cv2.setMouseCallback(self.selection_window_name, self._draw_polygon_callback)
 
-        print("\n--- ROI Selection ---")
-        print("Click to define polygon points.")
-        print("Press ENTER to confirm current polygon.")
-        print("Press ESC to finish selection.")
+        print("\n--- 🚦Traffic Jam Detection - ROI Selection ---")
+        print("🖱️  Click to define polygon points.")
+        print("↩️  Press ENTER to confirm the current polygon.")
+        print("❌ Press ESC to finish ROI selection.\n")
 
         while True:
             temp_display_frame = display_frame.copy()
@@ -81,7 +81,7 @@ class TrafficJamDetector:
             for pt in self.current_polygon:
                 cv2.circle(temp_display_frame, pt, 3, (0, 0, 255), -1)
 
-            cv2.imshow("Select ROIs", temp_display_frame)
+            cv2.imshow("Traffic Jam Detection - Select ROIs", temp_display_frame)
             key = cv2.waitKey(1) & 0xFF
 
             if key == 13:  # ENTER key
@@ -100,8 +100,9 @@ class TrafficJamDetector:
                     print("Minimum 3 points required to save polygon.")
             elif key == 27:  # ESC key
                 break
-
-        cv2.destroyWindow("Select ROIs")
+        
+        print(f"\n✅ ROI Selection complete. Total zones defined: {len(self.polygons)}")
+        cv2.destroyWindow(self.selection_window_name)
 
     def _calculate_smoothed_velocity(self, track_id, current_pos):
         """Calculate smoothed velocity over multiple frames"""
@@ -151,15 +152,23 @@ class TrafficJamDetector:
 
         return is_low_speed and (is_consistent or has_sufficient_slow_vehicles)
 
-    def _process_detections_and_tracking(self, frame):
-        """Process YOLO detections and update tracker - similar to code 1's detection processing"""
-        results_boxes = self.yolo_model.predict(frame, verbose=False)[0].boxes
+    def _process_detections_and_tracking(self, yolo_boxes, class_names):
+        """
+        Process external YOLO detection boxes and update Norfair tracker.
+
+        Args:
+            yolo_boxes: YOLOv8 Result.boxes from Ultralytics model (result.boxes)
+            class_names: Dict mapping class index to string label (e.g. {0: 'person', 1: 'car', ...})
+
+        Returns:
+            List of updated tracked objects
+        """
         norfair_detections = []
 
-        for box in results_boxes:
+        for box in yolo_boxes:
             conf = float(box.conf[0])
             cls_id = int(box.cls[0])
-            label = self.yolo_model.names[cls_id]
+            label = class_names.get(cls_id, None)
 
             if label in self.vehicle_labels and conf >= Config.CONFIDENCE_THRESHOLD:
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
@@ -279,7 +288,6 @@ class TrafficJamDetector:
         # Draw tracked objects
         for obj in tracked_objects:
             cx, cy = map(int, obj.estimate[0])
-            track_id = obj.id
 
             # Check if inside any ROI
             is_inside_any_roi = False

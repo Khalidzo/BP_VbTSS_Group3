@@ -4,7 +4,6 @@ from .config import (
     FONT,
     COL_RED,
     COL_GRN,
-    COL_BLU,
     COL_GREY,
     COL_HELPER,
     ROI_COLORS,
@@ -22,10 +21,6 @@ class ROISelector:
         self.current_roi = 0
         self.cursor_pos = None
         self.banner_h = 40
-
-        # Calculate scale factors for resizing
-        self.scale_factor_x = 800 / first_frame.shape[1]
-        self.scale_factor_y = 600 / first_frame.shape[0]
 
         self._initialize_roi_data()
 
@@ -63,14 +58,6 @@ class ROISelector:
                 }
             )
 
-    def screen_to_original(self, px, py):
-        """Convert screen coordinates to original frame coordinates"""
-        return int(px / self.scale_factor_x), int(py / self.scale_factor_y)
-
-    def original_to_screen(self, px, py):
-        """Convert original frame coordinates to screen coordinates"""
-        return int(px * self.scale_factor_x), int(py * self.scale_factor_y)
-
     def _banner_text(self):
         """Generate banner text based on current selection state"""
         if self.current_roi >= len(self.roi_data):
@@ -95,9 +82,7 @@ class ROISelector:
 
     def _on_mouse(self, event, x, y, flags, param):
         """Handle mouse events for ROI selection"""
-        # Convert screen coordinates to original frame coordinates
-        orig_x, orig_y = self.screen_to_original(x, y)
-        self.cursor_pos = (orig_x, orig_y)
+        self.cursor_pos = (x, y)
 
         if (
             y < self.banner_h
@@ -109,11 +94,11 @@ class ROISelector:
         roi = self.roi_data[self.current_roi]
 
         if roi["mode"] == "STRIPES" and len(roi["points"]) < 2:
-            roi["points"].append((orig_x, orig_y))
+            roi["points"].append((x, y))
         elif roi["mode"] == "ENDPOINTS" and len(roi["endpoints"]) < 2:
-            roi["endpoints"].append((orig_x, orig_y))
+            roi["endpoints"].append((x, y))
         elif roi["mode"] == "LANE" and len(roi["lane_pts"]) < 4:
-            roi["lane_pts"].append((orig_x, orig_y))
+            roi["lane_pts"].append((x, y))
             if len(roi["lane_pts"]) == 4:
                 roi["completed"] = True
                 self.current_roi += 1
@@ -127,18 +112,16 @@ class ROISelector:
             # Draw points for current ROI being configured
             if roi_idx == self.current_roi and roi["mode"] == "STRIPES":
                 for i, (px, py) in enumerate(roi["points"]):
-                    sx, sy = self.original_to_screen(px, py)
-                    cv.circle(vis, (sx, sy), 4, COL_RED, -1)
-                    cv.putText(vis, f"{i+1}", (sx + 6, sy - 6), FONT, 0.5, COL_RED, 1)
+                    cv.circle(vis, (px, py), 4, COL_RED, -1)
+                    cv.putText(vis, f"{i+1}", (px + 6, py - 6), FONT, 0.5, COL_RED, 1)
 
             # Draw endpoints for all ROIs
-            for i, (sx, sy) in enumerate(roi["endpoints"]):
-                disp_x, disp_y = self.original_to_screen(sx, sy)
-                cv.circle(vis, (disp_x, disp_y), 5, COL_GRN, -1)
+            for i, (px, py) in enumerate(roi["endpoints"]):
+                cv.circle(vis, (px, py), 5, COL_GRN, -1)
                 cv.putText(
                     vis,
                     f"R{roi_idx+1}-{'S' if i == 0 else 'E'}",
-                    (disp_x + 6, disp_y - 6),
+                    (px + 6, py - 6),
                     FONT,
                     0.5,
                     COL_GRN,
@@ -147,12 +130,11 @@ class ROISelector:
 
             # Draw lane points for all ROIs
             for i, (rx, ry) in enumerate(roi["lane_pts"]):
-                disp_x, disp_y = self.original_to_screen(rx, ry)
-                cv.circle(vis, (disp_x, disp_y), 5, roi_color, -1)
+                cv.circle(vis, (rx, ry), 5, roi_color, -1)
                 cv.putText(
                     vis,
                     f"R{roi_idx+1}-{i+1}",
-                    (disp_x + 6, disp_y - 6),
+                    (rx + 6, ry - 6),
                     FONT,
                     0.4,
                     roi_color,
@@ -176,16 +158,16 @@ class ROISelector:
             dv = end_pt - cur
             if np.linalg.norm(dv) > 0:
                 dv = dv / np.linalg.norm(dv)
-                start_point = self.original_to_screen(*(cur - 2000 * dv).astype(int))
-                end_point = self.original_to_screen(*(cur + 2000 * dv).astype(int))
+                start_point = tuple((cur - 2000 * dv).astype(int))
+                end_point = tuple((cur + 2000 * dv).astype(int))
                 cv.line(vis, start_point, end_point, COL_HELPER, 1, cv.LINE_AA)
 
         if len(roi["lane_pts"]) == 1:
             p0 = np.array(roi["lane_pts"][0])
             dv = end_pt - p0
             dv = dv / np.linalg.norm(dv)
-            start_point = self.original_to_screen(*(p0 - 2000 * dv).astype(int))
-            end_point = self.original_to_screen(*(p0 + 2000 * dv).astype(int))
+            start_point = tuple((p0 - 2000 * dv).astype(int))
+            end_point = tuple((p0 + 2000 * dv).astype(int))
             cv.line(vis, start_point, end_point, COL_HELPER, 1, cv.LINE_AA)
 
         if len(roi["lane_pts"]) == 2 or len(roi["lane_pts"]) == 3:
@@ -193,8 +175,8 @@ class ROISelector:
             start_pt = np.array(roi["endpoints"][0])
             ed = tr - tl
             ed = ed / np.linalg.norm(ed)
-            start_point = self.original_to_screen(*(start_pt - 2000 * ed).astype(int))
-            end_point = self.original_to_screen(*(start_pt + 2000 * ed).astype(int))
+            start_point = tuple((start_pt - 2000 * ed).astype(int))
+            end_point = tuple((start_pt + 2000 * ed).astype(int))
             cv.line(vis, start_point, end_point, COL_HELPER, 1, cv.LINE_AA)
 
     def _handle_space_key(self):
@@ -257,7 +239,7 @@ class ROISelector:
                 FONT,
                 0.7,
                 (255, 255, 255),
-                2,
+                1,
                 cv.LINE_AA,
             )
 

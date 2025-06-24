@@ -64,7 +64,7 @@ def draw_tracks(frame, tracks, roi_data, vehicle_data):
                         frame,
                         speed_text,
                         (l, t),
-                        font_scale=1,
+                        font_scale=0.6,
                         bg_color=(140, 0, 0),
                     )
 

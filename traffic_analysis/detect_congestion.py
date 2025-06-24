@@ -7,21 +7,25 @@ from collections import deque
 
 
 class TrafficJamDetector:
-    def __init__(self, yolo_weights_path="Yolo-Weights/yolo12n.pt",
-                 min_velocity=1.5,  # Balanced value
-                 jam_threshold=3,  # Back to moderate value
-                 jam_frames_duration=30,  # Faster response
-                 target_width=640, target_height=360,
-                 # Improved parameters for Ground Truth
-                 ground_truth_jam_speed_threshold=1.8,  # Adjusted to min_velocity
-                 ground_truth_jam_duration_frames=30,  # Consistent with model
-                 # New parameters for improved detection
-                 velocity_smoothing_frames=3,  # Less smoothing for faster response
-                 min_vehicles_for_jam=2,  # Less strict
-                 confidence_threshold=0.2,  # Less strict for more detections
-                 # New adaptive parameters
-                 stationary_ratio_threshold=0.5,  # 50% instead of 60%
-                 velocity_variance_factor=0.7):  # More tolerance for velocity variance
+    def __init__(
+        self,
+        yolo_weights_path="Yolo-Weights/yolo12n.pt",
+        min_velocity=1.5,  # Balanced value
+        jam_threshold=3,  # Back to moderate value
+        jam_frames_duration=30,  # Faster response
+        target_width=640,
+        target_height=360,
+        # Improved parameters for Ground Truth
+        ground_truth_jam_speed_threshold=1.8,  # Adjusted to min_velocity
+        ground_truth_jam_duration_frames=30,  # Consistent with model
+        # New parameters for improved detection
+        velocity_smoothing_frames=3,  # Less smoothing for faster response
+        min_vehicles_for_jam=2,  # Less strict
+        confidence_threshold=0.2,  # Less strict for more detections
+        # New adaptive parameters
+        stationary_ratio_threshold=0.5,  # 50% instead of 60%
+        velocity_variance_factor=0.7,
+    ):  # More tolerance for velocity variance
 
         self.yolo_model = YOLO(yolo_weights_path)
         self.min_velocity = min_velocity
@@ -63,12 +67,16 @@ class TrafficJamDetector:
         """Calculates smoothed velocity over multiple frames."""
         if track_id not in self.track_history:
             self.track_history[track_id] = current_pos
-            self.track_velocity_history[track_id] = deque(maxlen=self.velocity_smoothing_frames)
+            self.track_velocity_history[track_id] = deque(
+                maxlen=self.velocity_smoothing_frames
+            )
             return 0.0
 
         prev_pos = self.track_history[track_id]
         # Euclidean distance instead of just Y-coordinate
-        velocity = np.sqrt((current_pos[0] - prev_pos[0]) ** 2 + (current_pos[1] - prev_pos[1]) ** 2)
+        velocity = np.sqrt(
+            (current_pos[0] - prev_pos[0]) ** 2 + (current_pos[1] - prev_pos[1]) ** 2
+        )
 
         # Add velocity to history
         self.track_velocity_history[track_id].append(velocity)
@@ -101,7 +109,9 @@ class TrafficJamDetector:
         is_consistent = std_velocity < variance_threshold
 
         # Additional condition: proportion of very slow vehicles
-        very_slow_vehicles = sum(1 for v in velocities_in_zone if v < self.min_velocity * 0.8)
+        very_slow_vehicles = sum(
+            1 for v in velocities_in_zone if v < self.min_velocity * 0.8
+        )
         slow_ratio = very_slow_vehicles / len(velocities_in_zone)
 
         # At least 40% of vehicles must be very slow
@@ -130,14 +140,30 @@ class TrafficJamDetector:
             temp_display_frame = display_frame.copy()
 
             for poly_np in self.polygon_np_arrays:
-                cv2.polylines(temp_display_frame, [poly_np], isClosed=True, color=(0, 255, 0), thickness=2)
+                cv2.polylines(
+                    temp_display_frame,
+                    [poly_np],
+                    isClosed=True,
+                    color=(0, 255, 0),
+                    thickness=2,
+                )
 
             if len(self.current_polygon) >= 2:
-                cv2.polylines(temp_display_frame, [np.array(self.current_polygon, np.int32)], isClosed=False,
-                              color=(0, 255, 255), thickness=1)
+                cv2.polylines(
+                    temp_display_frame,
+                    [np.array(self.current_polygon, np.int32)],
+                    isClosed=False,
+                    color=(0, 255, 255),
+                    thickness=1,
+                )
             if len(self.current_polygon) >= 3:
-                cv2.polylines(temp_display_frame, [np.array(self.current_polygon, np.int32)], isClosed=True,
-                              color=(0, 255, 0), thickness=1)
+                cv2.polylines(
+                    temp_display_frame,
+                    [np.array(self.current_polygon, np.int32)],
+                    isClosed=True,
+                    color=(0, 255, 0),
+                    thickness=1,
+                )
 
             for pt in self.current_polygon:
                 cv2.circle(temp_display_frame, pt, 3, (0, 0, 255), -1)
@@ -148,7 +174,9 @@ class TrafficJamDetector:
             if key == 13:  # ENTER key
                 if len(self.current_polygon) >= 3:
                     self.polygons.append(self.current_polygon.copy())
-                    self.polygon_np_arrays.append(np.array(self.current_polygon, np.int32))
+                    self.polygon_np_arrays.append(
+                        np.array(self.current_polygon, np.int32)
+                    )
                     self.zone_stationary_counts.append(0)
                     self.zone_active_jams.append(False)
                     self.jam_intervals.append([])
@@ -188,10 +216,14 @@ class TrafficJamDetector:
                 break
 
             frame_idx += 1
-            current_frame_display = cv2.resize(frame, (self.target_width, self.target_height))
+            current_frame_display = cv2.resize(
+                frame, (self.target_width, self.target_height)
+            )
 
             # YOLO prediction with confidence threshold
-            results_boxes = self.yolo_model.predict(current_frame_display, verbose=False)[0].boxes
+            results_boxes = self.yolo_model.predict(
+                current_frame_display, verbose=False
+            )[0].boxes
 
             norfair_detections = []
             for box in results_boxes:
@@ -204,7 +236,9 @@ class TrafficJamDetector:
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     cx = (x1 + x2) / 2
                     cy = (y1 + y2) / 2
-                    norfair_detections.append(Detection(points=np.array([[cx, cy]]), scores=np.array([conf])))
+                    norfair_detections.append(
+                        Detection(points=np.array([[cx, cy]]), scores=np.array([conf]))
+                    )
 
             tracked_objects = self.tracker.update(detections=norfair_detections)
 
@@ -218,7 +252,9 @@ class TrafficJamDetector:
                 track_id = obj.id
 
                 # Improved velocity calculation
-                smoothed_velocity = self._calculate_smoothed_velocity(track_id, (cx, cy))
+                smoothed_velocity = self._calculate_smoothed_velocity(
+                    track_id, (cx, cy)
+                )
 
                 # Check for each ROI
                 is_inside_any_roi = False
@@ -235,8 +271,15 @@ class TrafficJamDetector:
                 # Improved visualization
                 track_color = (255, 0, 0) if is_inside_any_roi else (0, 255, 255)
                 # Display velocity
-                cv2.putText(current_frame_display, f"",
-                            (cx - 10, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, track_color, 1)
+                cv2.putText(
+                    current_frame_display,
+                    f"",
+                    (cx - 10, cy - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    track_color,
+                    1,
+                )
 
             # Improved jam detection for each zone
             frame_roi_data_for_log = []
@@ -247,17 +290,25 @@ class TrafficJamDetector:
                 jam_detected_this_frame = False
 
                 if zone_velocities_this_frame[idx]:  # Vehicles present in zone
-                    is_zone_congested = self._is_stationary_with_confidence(zone_velocities_this_frame[idx])
+                    is_zone_congested = self._is_stationary_with_confidence(
+                        zone_velocities_this_frame[idx]
+                    )
 
                     if has_min_vehicles:
                         # Standard logic: enough vehicles + velocity analysis
-                        stationary_ratio = zone_stationary_vehicles[idx] / zone_vehicle_counts[idx]
-                        if is_zone_congested and stationary_ratio >= self.stationary_ratio_threshold:
+                        stationary_ratio = (
+                            zone_stationary_vehicles[idx] / zone_vehicle_counts[idx]
+                        )
+                        if (
+                            is_zone_congested
+                            and stationary_ratio >= self.stationary_ratio_threshold
+                        ):
                             jam_detected_this_frame = True
                     else:
                         # Few vehicles: stricter criteria
-                        if (is_zone_congested and
-                                zone_stationary_vehicles[idx] >= max(1, zone_vehicle_counts[idx] - 1)):
+                        if is_zone_congested and zone_stationary_vehicles[idx] >= max(
+                            1, zone_vehicle_counts[idx] - 1
+                        ):
                             jam_detected_this_frame = True
 
                 # Jam counter update
@@ -266,16 +317,23 @@ class TrafficJamDetector:
                 else:
                     # End jam with hysteresis (smooth transition)
                     if self.zone_stationary_counts[idx] > 0:
-                        self.zone_stationary_counts[idx] = max(0, self.zone_stationary_counts[idx] - 2)
+                        self.zone_stationary_counts[idx] = max(
+                            0, self.zone_stationary_counts[idx] - 2
+                        )
 
-                    if self.zone_active_jams[idx] and self.zone_stationary_counts[idx] == 0:
+                    if (
+                        self.zone_active_jams[idx]
+                        and self.zone_stationary_counts[idx] == 0
+                    ):
                         end_frame = frame_idx - 1
                         start_frame = self.jam_start_frames[idx]
                         if start_frame != -1:
                             self.jam_intervals[idx].append((start_frame, end_frame))
                         self.jam_start_frames[idx] = -1
 
-                is_jam_predicted = self.zone_stationary_counts[idx] >= self.jam_frames_duration
+                is_jam_predicted = (
+                    self.zone_stationary_counts[idx] >= self.jam_frames_duration
+                )
 
                 # Track jam start
                 if is_jam_predicted and not self.zone_active_jams[idx]:
@@ -284,33 +342,46 @@ class TrafficJamDetector:
 
                 # Visualization with more information
                 color = (0, 0, 255) if is_jam_predicted else (0, 255, 0)
-                cv2.polylines(current_frame_display, [self.polygon_np_arrays[idx]], isClosed=True, color=color,
-                              thickness=2)
+                cv2.polylines(
+                    current_frame_display,
+                    [self.polygon_np_arrays[idx]],
+                    isClosed=True,
+                    color=color,
+                    thickness=2,
+                )
 
                 status_text = "Traffic Jam" if is_jam_predicted else "Traffic Flowing"
                 info_text = f"Zone {idx + 1}: {status_text}"
 
-                cv2.putText(current_frame_display, info_text,
-                            (polygon[0][0], polygon[0][1] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
+                cv2.putText(
+                    current_frame_display,
+                    info_text,
+                    (polygon[0][0], polygon[0][1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                    cv2.LINE_AA,
+                )
 
                 # Collect data for evaluation
                 avg_velocity_in_zone = None
                 if zone_velocities_this_frame[idx]:
                     avg_velocity_in_zone = np.mean(zone_velocities_this_frame[idx])
 
-                frame_roi_data_for_log.append({
-                    "zone_idx": idx,
-                    "predicted_jam": is_jam_predicted,
-                    "average_velocity": avg_velocity_in_zone,
-                    "vehicle_count": zone_vehicle_counts[idx],
-                    "stationary_count": zone_stationary_vehicles[idx]
-                })
+                frame_roi_data_for_log.append(
+                    {
+                        "zone_idx": idx,
+                        "predicted_jam": is_jam_predicted,
+                        "average_velocity": avg_velocity_in_zone,
+                        "vehicle_count": zone_vehicle_counts[idx],
+                        "stationary_count": zone_stationary_vehicles[idx],
+                    }
+                )
 
-            self.evaluation_log.append({
-                "frame_idx": frame_idx,
-                "roi_data": frame_roi_data_for_log
-            })
+            self.evaluation_log.append(
+                {"frame_idx": frame_idx, "roi_data": frame_roi_data_for_log}
+            )
 
             cv2.imshow("Traffic Jam Detection", current_frame_display)
             if cv2.waitKey(1) & 0xFF == 27:  # ESC key
@@ -356,8 +427,10 @@ class TrafficJamDetector:
 
                 # Improved ground truth calculation
                 is_ground_truth_low_speed = False
-                if (avg_velocity_this_frame is not None and
-                        avg_velocity_this_frame < self.ground_truth_jam_speed_threshold):
+                if (
+                    avg_velocity_this_frame is not None
+                    and avg_velocity_this_frame < self.ground_truth_jam_speed_threshold
+                ):
                     # More flexible GT conditions
                     if vehicle_count >= self.min_vehicles_for_jam or vehicle_count >= 1:
                         is_ground_truth_low_speed = True
@@ -367,8 +440,10 @@ class TrafficJamDetector:
                 else:
                     zone_gt_consecutive_low_speed_frames[zone_idx] = 0
 
-                ground_truth_jam = zone_gt_consecutive_low_speed_frames[
-                                       zone_idx] >= self.ground_truth_jam_duration_frames
+                ground_truth_jam = (
+                    zone_gt_consecutive_low_speed_frames[zone_idx]
+                    >= self.ground_truth_jam_duration_frames
+                )
 
                 # Track GT intervals
                 if ground_truth_jam and not zone_gt_jam_active[zone_idx]:
@@ -377,7 +452,9 @@ class TrafficJamDetector:
                 elif not ground_truth_jam and zone_gt_jam_active[zone_idx]:
                     start_gt_frame = zone_gt_jam_start_frame[zone_idx]
                     if start_gt_frame != -1:
-                        zone_gt_jam_intervals[zone_idx].append((start_gt_frame, current_frame_idx - 1))
+                        zone_gt_jam_intervals[zone_idx].append(
+                            (start_gt_frame, current_frame_idx - 1)
+                        )
                     zone_gt_jam_start_frame[zone_idx] = -1
                     zone_gt_jam_active[zone_idx] = False
 
@@ -392,12 +469,16 @@ class TrafficJamDetector:
                     total_fn += 1
 
         # Close GT intervals at the end
-        last_frame_idx_overall = self.evaluation_log[-1]["frame_idx"] if self.evaluation_log else 0
+        last_frame_idx_overall = (
+            self.evaluation_log[-1]["frame_idx"] if self.evaluation_log else 0
+        )
         for idx, active in enumerate(zone_gt_jam_active):
             if active:
                 start_gt_frame = zone_gt_jam_start_frame[idx]
                 if start_gt_frame != -1:
-                    zone_gt_jam_intervals[idx].append((start_gt_frame, last_frame_idx_overall))
+                    zone_gt_jam_intervals[idx].append(
+                        (start_gt_frame, last_frame_idx_overall)
+                    )
 
         # Output results
         print("\n--- Ground Truth Jam Intervals ---")
@@ -409,7 +490,9 @@ class TrafficJamDetector:
                 for start_f, end_f in intervals:
                     start_s = round(start_f / fps, 2)
                     end_s = round(end_f / fps, 2)
-                    print(f"  GT Jam from {start_s}s to {end_s}s (Frames: {start_f}-{end_f})")
+                    print(
+                        f"  GT Jam from {start_s}s to {end_s}s (Frames: {start_f}-{end_f})"
+                    )
 
         print("\n--- Model Performance Evaluation ---")
         print(f"Total True Positives (TP): {total_tp}")
@@ -419,17 +502,29 @@ class TrafficJamDetector:
 
         precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
         recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
-        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        accuracy = (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn) if (
-                                                                                                      total_tp + total_tn + total_fp + total_fn) > 0 else 0
+        f1_score = (
+            2 * (precision * recall) / (precision + recall)
+            if (precision + recall) > 0
+            else 0
+        )
+        accuracy = (
+            (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn)
+            if (total_tp + total_tn + total_fp + total_fn) > 0
+            else 0
+        )
 
         print(f"Accuracy: {accuracy:.4f}")
         print(f"Precision: {precision:.4f}")
         print(f"Recall (Sensitivity): {recall:.4f}")
         print(f"F1-Score: {f1_score:.4f}")
 
-    def save_jam_evaluation(self, zone_jam_intervals, fps, log_path="jam_evaluation.txt",
-                            plot_path="jam_evaluation_plot.png"):
+    def save_jam_evaluation(
+        self,
+        zone_jam_intervals,
+        fps,
+        log_path="jam_evaluation.txt",
+        plot_path="jam_evaluation_plot.png",
+    ):
         """Saves jam detection results to a log file and generates a plot."""
         with open(log_path, "w") as f:
             for zone_idx, intervals in enumerate(zone_jam_intervals):
@@ -444,12 +539,17 @@ class TrafficJamDetector:
 
         plt.figure(figsize=(12, max(1, len(zone_jam_intervals))))
         for i, intervals in enumerate(zone_jam_intervals):
-            for (start_f, end_f) in intervals:
+            for start_f, end_f in intervals:
                 start_s = start_f / fps
                 end_s = end_f / fps
-                plt.barh(y=i, width=end_s - start_s, left=start_s, height=0.4, color="red")
+                plt.barh(
+                    y=i, width=end_s - start_s, left=start_s, height=0.4, color="red"
+                )
 
-        plt.yticks(range(len(zone_jam_intervals)), [f"Zone {i + 1}" for i in range(len(zone_jam_intervals))])
+        plt.yticks(
+            range(len(zone_jam_intervals)),
+            [f"Zone {i + 1}" for i in range(len(zone_jam_intervals))],
+        )
         plt.xlabel("Time (s)")
         plt.title("Traffic Jam Intervals per Zone (Model Prediction)")
         plt.grid(axis="x", linestyle="--", alpha=0.6)
@@ -470,7 +570,7 @@ if __name__ == "__main__":
         min_vehicles_for_jam=2,  # Less strict
         confidence_threshold=0.4,  # Allow more detections
         stationary_ratio_threshold=0.5,  # 50% instead of 60%
-        velocity_variance_factor=0.7  # More tolerance for velocity variance
+        velocity_variance_factor=0.7,  # More tolerance for velocity variance
     )
 
     detector.run(video_path="Videos/traffic_jam.ts")

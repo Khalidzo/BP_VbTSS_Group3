@@ -1,9 +1,0 @@
-Cars Out: 4
-Cars In: 5
-Trucks Out: 2
-Trucks In: 1
-Motorcycles Out: 0
-Motorcycles In: 0
-Buses Out: 0
-Buses In: 0
-Total: 12

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-class ResultsSaver:
+class JamResultsSaver:
     @staticmethod
     def save_jam_evaluation(zone_jam_intervals, fps, log_path="jam_evaluation.txt",
                             plot_path="jam_evaluation_plot.png"):
@@ -18,17 +18,10 @@ class ResultsSaver:
                         end_s = round(end_f / fps, 2)
                         f.write(f"  Jam from {start_s}s to {end_s}s\n")
 
-        print(f"Results saved to: {log_path}")
+        print(f"Jam evaluation saved to: {log_path}")
 
         # Generate plot
-        ResultsSaver._create_jam_intervals_plot(zone_jam_intervals, fps, plot_path)
-        print(f"Plot saved to: {plot_path}")
-
-    @staticmethod
-    def _create_jam_intervals_plot(zone_jam_intervals, fps, plot_path):
-        """Creates and saves a bar chart showing jam intervals."""
         plt.figure(figsize=(12, max(1, len(zone_jam_intervals))))
-
         for i, intervals in enumerate(zone_jam_intervals):
             for (start_f, end_f) in intervals:
                 start_s = start_f / fps
@@ -42,3 +35,5 @@ class ResultsSaver:
         plt.tight_layout()
         plt.savefig(plot_path)
         plt.close()
+
+        print(f"Jam evaluation plot saved to: {plot_path}")

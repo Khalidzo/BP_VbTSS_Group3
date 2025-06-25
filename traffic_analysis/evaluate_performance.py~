@@ -110,8 +110,6 @@ class PerformanceEvaluator:
                     cbar_kws={'label':'Count'})
 
         plt.title('Confusion Matrix - Traffic Jam Detection', fontsize=14, fontweight='bold')
-        plt.ylabel('Actual', fontsize=12)
-        plt.xlabel('Predicted', fontsize=12)
 
         plt.text(0.5, -0.1, f'TN: {total_tn}', transform=plt.gca().transAxes, ha='center', fontsize=10, color=darkblue)
         plt.text(1.5, -0.1, f'FP: {total_fp}', transform=plt.gca().transAxes, ha='center', fontsize=10, color=lightblue)

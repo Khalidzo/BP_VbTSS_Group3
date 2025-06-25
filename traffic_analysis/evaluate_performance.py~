@@ -119,6 +119,7 @@ class PerformanceEvaluator:
         plt.text(1.5, -0.15, f'TP: {total_tp}', transform=plt.gca().transAxes, ha='center', fontsize=10, color=darkblue)
 
         plt.tight_layout()
+        plt.savefig("confusion_matrix.png")
         plt.show()
 
         precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0

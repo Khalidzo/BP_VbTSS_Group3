@@ -322,4 +322,4 @@ if __name__ == "__main__":
         velocity_variance_factor=0.7  # More tolerance for velocity variance
     )
 
-    detector.run(video_path="Videos/traffic_jam2.mp4")
+    detector.run(video_path="Videos/eva7.mp4")

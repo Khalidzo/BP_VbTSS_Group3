@@ -1,6 +1,7 @@
 import cv2
 import time
 import argparse
+import os
 import logging
 from video_processor import VideoProcessor
 
@@ -14,10 +15,13 @@ class Main:
         self.processor = None
         self.window_name = "Enhanced Video Stream"
         self.weather_enabled = True
+        self.video_writer = None
+        self.output_path = "output.mp4"
         
     def setup_display_window(self):
         """Setup the display window with controls"""
         cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
+        #cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
         
         # Add instructions to window
         instructions = [
@@ -108,7 +112,17 @@ class Main:
                     
                     # Display frame
                     cv2.imshow(self.window_name, display_frame)
-                
+                    # Initialize video writer once
+                    if self.video_writer is None:
+                        height, width = enhanced_frame.shape[:2]
+                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                        self.video_writer = cv2.VideoWriter(self.output_path, fourcc, 25, (width, height))
+                        logger.info(f"Saving enhanced video to: {self.output_path}")
+
+                        
+
+                # Write the enhanced frame
+                    self.video_writer.write(enhanced_frame)
                 # Handle keyboard input
                 key = cv2.waitKey(1) & 0xFF
                 
@@ -146,8 +160,10 @@ class Main:
                     fullscreen = not fullscreen
                     if fullscreen:
                         cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                        time.sleep(0.1)
                     else:
                         cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+                        time.sleep(0.1)
                 
                 # Check if processor is still running
                 if not self.processor.is_running():
@@ -168,6 +184,10 @@ class Main:
         """Clean up resources"""
         if self.processor:
             self.processor.stop_processing()
+        if self.video_writer:
+            self.video_writer.release()
+            logger.info(f"Saved video to: {self.output_path}")
+
         cv2.destroyAllWindows()
         logger.info("Application cleanup completed")
 

@@ -127,6 +127,7 @@ class VideoProcessor:
                 frame = self.frame_queue.get(timeout=0.1)
                 
                 # Enhance frame
+                
                 enhanced_frame = self.enhancer.enhance_frame(frame, self.enhancement_level)
                 
                 # Add enhanced frame to queue
@@ -199,3 +200,4 @@ class VideoProcessor:
         if hasattr(self.enhancer, 'get_weather_info'):
             return self.enhancer.get_weather_info()
         return {'condition': 'unknown', 'detection_enabled': self.enable_weather}
+    

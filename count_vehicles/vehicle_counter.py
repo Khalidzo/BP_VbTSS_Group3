@@ -1,6 +1,5 @@
 import numpy as np
 import cv2
-from ultralytics import YOLO
 from base_feature import VideoFeatureProcessor
 from config import TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT
 from count_vehicles.vehicle_processor import VehicleProcessor

@@ -5,18 +5,17 @@ from ultralytics import YOLO
 from InquirerPy.prompts.list import ListPrompt
 from InquirerPy.prompts.checkbox import CheckboxPrompt
 from InquirerPy.prompts.input import InputPrompt
+import tkinter as tk
+from tkinter import filedialog
+import os
+import sys
+from utils import draw_label_with_bg
 from base_feature import VideoFeatureProcessor
 from config import TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT, VEHICLE_CLASSES
 from count_vehicles.config import TRACKER_CONFIG
 from speed_detection.speed_estimator import SpeedEstimator
 from traffic_jam_detection.detect_congestion import CongestionDetector
 from count_vehicles.vehicle_counter import VehicleCounter
-import tkinter as tk
-from tkinter import filedialog
-import os
-import sys
-
-from utils import draw_label_with_bg
 
 # ──────── Source Selection ────────
 source_type = ListPrompt(

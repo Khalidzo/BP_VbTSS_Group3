@@ -1,5 +1,5 @@
 import cv2 as cv
-from .utils import draw_label_with_bg
+from utils import draw_label_with_bg
 
 
 def draw_ground_truth_speeds(frame, frame_count, gt_cars, font_scale=0.6):
@@ -46,8 +46,6 @@ def draw_tracks(frame, tracks, roi_data, vehicle_data):
 
         track_id = track.track_id
         l, t, r, b = map(int, track.to_ltrb())
-        cv.rectangle(frame, (l, t), (r, b), (140, 0, 0), 2)
-        # draw_label_with_bg(frame, f"ID {track_id}", (l, t))
 
         for roi in roi_data:
             if roi["completed"] and track_id in vehicle_data[roi["id"]]:
@@ -58,12 +56,12 @@ def draw_tracks(frame, tracks, roi_data, vehicle_data):
                     and track_data["kalman_speed"] > 0
                 ):
                     speed_text = (
-                        f"R{roi['id']+1}: {track_data['kalman_speed']:.1f} km/h"
+                        f"Speed: {track_data['kalman_speed']:.1f} km/h"
                     )
                     draw_label_with_bg(
                         frame,
                         speed_text,
-                        (l, t),
+                        (l, t - 30),
                         font_scale=0.6,
                         bg_color=(140, 0, 0),
                     )

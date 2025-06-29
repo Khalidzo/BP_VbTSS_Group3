@@ -1,4 +1,3 @@
-# processing/base_feature.py
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Any
@@ -23,4 +22,12 @@ class VideoFeatureProcessor(ABC):
         class_names: dict,
     ) -> np.ndarray:
         """Processes a frame and returns the modified one."""
+        pass
+
+    def finalize(self):
+        """Optional method to finalize processing (e.g. save results)."""
+        pass
+
+    def print_results(self):
+        """Optional method to print results or summaries."""
         pass

@@ -1,21 +1,164 @@
 import cv2 as cv
 import torch
 from ultralytics import YOLO
-from InquirerPy import inquirer
+from InquirerPy.prompts.list import ListPrompt
+from InquirerPy.prompts.checkbox import CheckboxPrompt
+from InquirerPy.prompts.input import InputPrompt
 from config import TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT
 from speed_detection.speed_estimator import SpeedEstimator
 from traffic_jam_detection.detect_congestion import CongestionDetector
+import tkinter as tk
+from tkinter import filedialog
+import os
+import sys
+
+# ──────── Source Selection ────────
+source_type = ListPrompt(
+    message="Select video source:",
+    choices=[
+        {"name": "Live Stream (.m3u8)", "value": "live"},
+        {"name": "Local Video File", "value": "local"},
+    ],
+).execute()
 
 # ──────── Video Setup ────────
-session = "session6_left"
-video_path = rf"D:\\2016-ITS-BrnoCompSpeed\\dataset\\{session}\\video.avi"
+if source_type == "live":
+    stream_url = InputPrompt(message="Paste live stream URL (.m3u8):").execute()
+    cap = cv.VideoCapture(stream_url)
+    VIDEO_FPS = cap.get(cv.CAP_PROP_FPS) or 30  # Fallback if FPS not known
+    ret, first_frame = cap.read()
+    if not ret:
+        raise IOError("❌ Could not read first frame from live stream")
+else:
+    # Multiple fallback methods for file selection
+    video_path = None
 
-cap = cv.VideoCapture(video_path)
-VIDEO_FPS = cap.get(cv.CAP_PROP_FPS)
-ret, first_frame = cap.read()
-if not ret:
-    raise IOError("Could not read first frame")
-resized_first_frame = cv.resize(first_frame, (TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT))
+    # Method 1: Try tkinter file dialog with enhanced settings
+    try:
+        print("📁 Attempting to open file dialog...")
+
+        root = tk.Tk()
+        root.withdraw()
+
+        # Make window appear on top and get focus
+        root.wm_attributes("-topmost", 1)
+        root.update()
+        root.lift()
+        root.focus_force()
+
+        # Add a small delay to ensure window is ready
+        root.after(100)
+        root.update()
+
+        video_path = filedialog.askopenfilename(
+            title="Select a Local Video File",
+            filetypes=[
+                ("Video files", "*.mp4 *.avi *.mkv *.mov *.m4v *.m3u8"),
+                ("MP4 files", "*.mp4"),
+                ("AVI files", "*.avi"),
+                ("All files", "*.*"),
+            ],
+            parent=root,
+        )
+
+        root.destroy()
+
+        if video_path and video_path.strip():
+            print(f"✅ File selected via dialog: {os.path.basename(video_path)}")
+        else:
+            print("❌ No file selected from dialog")
+            video_path = None
+
+    except Exception as e:
+        print(f"❌ File dialog failed: {e}")
+        video_path = None
+
+    # Method 2: Manual path input if dialog failed
+    if not video_path:
+        print("\n" + "=" * 50)
+        print("📁 FILE SELECTION - Manual Input")
+        print("=" * 50)
+        print(
+            "Since the file dialog didn't work, please provide the video file path manually."
+        )
+        print("\nOptions:")
+        print("1. Type the full path to your video file")
+        print("2. Drag and drop the file into this terminal window")
+        print("3. Copy the file path from Windows Explorer")
+        print("\nExample: C:\\Users\\YourName\\Videos\\video.mp4")
+        print("-" * 50)
+
+        while not video_path:
+            try:
+                user_input = input("\nEnter video file path: ").strip()
+
+                if not user_input:
+                    print("❌ Empty path. Please try again.")
+                    continue
+
+                # Clean up the path (remove quotes if present)
+                video_path = user_input.strip('"').strip("'")
+
+                # Convert forward slashes to backslashes on Windows
+                if os.name == "nt":
+                    video_path = video_path.replace("/", "\\")
+
+                print(f"🔍 Checking path: {video_path}")
+                break
+
+            except KeyboardInterrupt:
+                print("\n❌ File selection cancelled by user.")
+                sys.exit(1)
+            except Exception as e:
+                print(f"❌ Error reading input: {e}")
+                continue
+
+    # Verify file exists and is readable
+    if not os.path.exists(video_path):
+        print(f"❌ File does not exist: {video_path}")
+        print("   Please check the path and try again.")
+        sys.exit(1)
+
+    if not os.path.isfile(video_path):
+        print(f"❌ Path is not a file: {video_path}")
+        sys.exit(1)
+
+    print(f"✅ Using video file: {os.path.basename(video_path)}")
+    print(f"   Full path: {video_path}")
+
+    cap = cv.VideoCapture(video_path)
+
+    # Check if video file opened successfully
+    if not cap.isOpened():
+        print(f"❌ Could not open video file: {video_path}")
+        print("   Make sure the file format is supported by OpenCV")
+        print("   Supported formats: .mp4, .avi, .mkv, .mov, .m4v")
+        sys.exit(1)
+
+    VIDEO_FPS = cap.get(cv.CAP_PROP_FPS)
+
+    # Validate FPS
+    if VIDEO_FPS <= 0:
+        print("⚠️  Warning: Could not determine video FPS, using default 30 FPS")
+        VIDEO_FPS = 30
+    else:
+        print(f"📊 Video FPS: {VIDEO_FPS}")
+
+    ret, first_frame = cap.read()
+    if not ret:
+        print("❌ Could not read first frame from video file")
+        print("   The video file might be corrupted or in an unsupported format")
+        cap.release()
+        sys.exit(1)
+
+    # Get video info
+    frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+    duration = frame_count / VIDEO_FPS if VIDEO_FPS > 0 else 0
+    print(f"📹 Video info: {frame_count} frames, {duration:.1f} seconds")
+
+resized_first_frame = cv.resize(
+    first_frame, (TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT)
+)
 
 # ──────── Feature Selection (Interactive) ────────
 feature_choices = [
@@ -23,7 +166,7 @@ feature_choices = [
     {"name": "Traffic Jam Detection", "value": "congestion"},
 ]
 
-selected_feature_keys = inquirer.checkbox( # type: ignore
+selected_feature_keys = CheckboxPrompt(
     message="Select features to activate (use space to select):",
     choices=feature_choices,
     instruction="(Use arrow keys to navigate, space to select, enter to confirm)",
@@ -44,46 +187,57 @@ if "congestion" in selected_feature_keys:
 
 if not selected_features:
     print("❌ No features selected. Exiting.")
-    exit()
+    sys.exit(1)
 
 # ──────── Shared YOLO Model ────────
+print("🤖 Loading YOLO model...")
 model = YOLO("yolo11n.pt")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
+print(f"Using device: {device}")
 
 # ──────── Main Loop ────────
-cap.set(cv.CAP_PROP_POS_FRAMES, 0)
 frame_count = 0
+cap.set(cv.CAP_PROP_POS_FRAMES, 0)
 
-while cap.isOpened():
+print("🎬 Starting video processing... (Press ESC to exit)")
+
+while True:
     ret, frame = cap.read()
     if not ret:
+        print("📹 End of video reached or could not read frame")
         break
 
     frame_count += 1
     frame = cv.resize(frame, (TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT))
+
     current_time = frame_count / VIDEO_FPS
     dt = 1.0 / VIDEO_FPS
 
     detections = model(frame, verbose=False)[0]
-
     processed_frame = frame.copy()
+
     for feature in selected_features:
         processed_frame = feature.process_frame(
             processed_frame, current_time, dt, detections, model.names
         )
 
     cv.imshow("Vehicle Feature Processor", processed_frame)
-    if cv.waitKey(1) & 0xFF == 27:
+
+    if cv.waitKey(1) & 0xFF == 27:  # ESC key to exit
+        print("🛑 Exit requested by user")
         break
 
 # ──────── Cleanup ────────
+print("🧹 Cleaning up...")
 cap.release()
 cv.destroyAllWindows()
 
-# Optional: Finalize and print results
+# ──────── Final Output ────────
 for feature in selected_features:
     if hasattr(feature, "finalize"):
         feature.finalize()
     if hasattr(feature, "print_results"):
         feature.print_results()
+
+print("✅ Processing complete!")

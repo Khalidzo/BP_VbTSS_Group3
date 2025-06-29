@@ -5,7 +5,6 @@ from collections import deque
 from traffic_jam_detection.config import Config
 
 
-
 class TrafficJamDetector:
     def __init__(self):
         self.tracker = Tracker(distance_function="euclidean", distance_threshold=30)
@@ -100,7 +99,7 @@ class TrafficJamDetector:
                     print("Minimum 3 points required to save polygon.")
             elif key == 27:  # ESC key
                 break
-        
+
         print(f"\n✅ ROI Selection complete. Total zones defined: {len(self.polygons)}")
         cv2.destroyWindow(self.selection_window_name)
 

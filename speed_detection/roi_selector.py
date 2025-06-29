@@ -258,7 +258,7 @@ class ROISelector:
             if k == ord(" "):  # Space key
                 if self._handle_space_key():
                     break
-        
+
         print(f"\nROI selection completed. {self.current_roi} ROIs configured.")
         cv.destroyWindow(self.selection_window_name)
         return self.roi_data

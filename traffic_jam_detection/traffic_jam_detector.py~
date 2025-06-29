@@ -103,7 +103,7 @@ class TrafficJamDetector:
 
     def _update_tracking_and_detect_jams(self, yolo_boxes, class_names, frame_idx):
         """
-        Update tracking and detect jams based on YOLOv8 detections.
+        Simplified version combining tracking and jam detection logic from second code.
 
         Args:
             yolo_boxes: YOLOv8 Result.boxes from Ultralytics model (result.boxes)
@@ -131,14 +131,14 @@ class TrafficJamDetector:
         # Update tracker
         tracked_objects = self.tracker.update(detections=norfair_detections)
 
-        # Jam detection logic
+        # Simplified jam detection logic (like second code)
         zone_stationary_this_frame = [0] * len(self.polygons)
 
         for obj in tracked_objects:
             cx, cy = map(int, obj.estimate[0])
             track_id = obj.id
 
-            # Velocity calculation
+            # Simple velocity calculation based on y-coordinate difference
             prev_y = self.track_history.get(track_id, cy)
             velocity = abs(cy - prev_y)
             self.track_history[track_id] = cy

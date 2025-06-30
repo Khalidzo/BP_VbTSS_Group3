@@ -4,9 +4,6 @@ from typing import Any
 
 
 class VideoFeatureProcessor(ABC):
-    def __init__(self):
-        self.roi_data = None
-
     @abstractmethod
     def get_user_input(self, first_frame: np.ndarray) -> None:
         """Collect necessary user input (e.g. select ROIs) and store any config needed."""

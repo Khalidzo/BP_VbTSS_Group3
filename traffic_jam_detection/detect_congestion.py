@@ -47,6 +47,8 @@ class CongestionDetector(VideoFeatureProcessor):
         self.last_frame_idx = self.frame_count
         # Use the simplified finalize method
         self.detector.finalize_jams(self.last_frame_idx)
+        # Save Evaluation
+        self.detector.save_jam_evaluation(self.video_fps)
 
     def print_results(self):
         print("\n--- Traffic Jam Detection Results ---")

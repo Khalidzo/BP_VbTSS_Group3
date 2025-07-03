@@ -1,16 +1,21 @@
+from typing import List
 import cv2 as cv
 import torch
 from ultralytics import YOLO
 from InquirerPy.prompts.list import ListPrompt
 from InquirerPy.prompts.checkbox import CheckboxPrompt
 from InquirerPy.prompts.input import InputPrompt
-from config import TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT
-from speed_detection.speed_estimator import SpeedEstimator
-from traffic_jam_detection.detect_congestion import CongestionDetector
 import tkinter as tk
 from tkinter import filedialog
 import os
 import sys
+from utils import draw_label_with_bg
+from base_feature import VideoFeatureProcessor
+from config import TARGET_SCREEN_WIDTH, TARGET_SCREEN_HEIGHT, VEHICLE_CLASSES
+from count_vehicles.config import TRACKER_CONFIG
+from speed_detection.speed_estimator import SpeedEstimator
+from traffic_jam_detection.detect_congestion import CongestionDetector
+from count_vehicles.vehicle_counter import VehicleCounter
 
 # ──────── Source Selection ────────
 source_type = ListPrompt(
@@ -47,7 +52,7 @@ else:
         root.focus_force()
 
         # Add a small delay to ensure window is ready
-        root.after(100)
+        root.after(100)  # type: ignore
         root.update()
 
         video_path = filedialog.askopenfilename(
@@ -164,6 +169,7 @@ resized_first_frame = cv.resize(
 feature_choices = [
     {"name": "Speed Detection", "value": "speed"},
     {"name": "Traffic Jam Detection", "value": "congestion"},
+    {"name": "Vehicle Counting", "value": "counting"},
 ]
 
 selected_feature_keys = CheckboxPrompt(
@@ -172,8 +178,16 @@ selected_feature_keys = CheckboxPrompt(
     instruction="(Use arrow keys to navigate, space to select, enter to confirm)",
 ).execute()
 
+# ──────── Shared YOLO Model ────────
+print("🤖 Loading YOLO model...")
+model = YOLO("yolo11n.pt")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+print(f"Using device: {device}")
+
+
 # ──────── Feature Initialization ────────
-selected_features = []
+selected_features: List[VideoFeatureProcessor] = []
 
 if "speed" in selected_feature_keys:
     speed_estimation = SpeedEstimator()
@@ -185,16 +199,14 @@ if "congestion" in selected_feature_keys:
     congestion_detection.get_user_input(resized_first_frame)
     selected_features.append(congestion_detection)
 
+if "counting" in selected_feature_keys:
+    vehicle_counter = VehicleCounter()
+    vehicle_counter.get_user_input(resized_first_frame)
+    selected_features.append(vehicle_counter)
+
 if not selected_features:
     print("❌ No features selected. Exiting.")
     sys.exit(1)
-
-# ──────── Shared YOLO Model ────────
-print("🤖 Loading YOLO model...")
-model = YOLO("yolo11n.pt")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-print(f"Using device: {device}")
 
 # ──────── Main Loop ────────
 frame_count = 0
@@ -214,9 +226,40 @@ while True:
     current_time = frame_count / VIDEO_FPS
     dt = 1.0 / VIDEO_FPS
 
+    # Detections
     detections = model(frame, verbose=False)[0]
+
+    # Tracking
+    model.track(frame, persist=True, **TRACKER_CONFIG)[0]
+
     processed_frame = frame.copy()
 
+    # Draw bounding boxes for target vehicle classes
+    if detections.boxes is not None:
+        for i, box in enumerate(detections.boxes):
+            # Get class ID and name
+            class_id = int(box.cls[0])
+            class_name = model.names[class_id]
+            
+            # Check if this detection is one of our target vehicle classes
+            if class_name in VEHICLE_CLASSES:
+                # Get bounding box coordinates (xyxy format)
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                
+                # Get confidence score
+                confidence = float(box.conf[0])
+                
+                # Draw bounding box rectangle
+                cv.rectangle(processed_frame, (x1, y1), (x2, y2), (140, 0, 0), 2)
+                
+                # Add class label and confidence using the custom function
+                label = f"{class_name}"
+                draw_label_with_bg(processed_frame, label, (x1, y1), 
+                                 font_scale=0.6, 
+                                 text_color=(255, 255, 255), 
+                                 bg_color=(140, 0, 0))
+
+    # Process features
     for feature in selected_features:
         processed_frame = feature.process_frame(
             processed_frame, current_time, dt, detections, model.names
@@ -227,6 +270,7 @@ while True:
     if cv.waitKey(1) & 0xFF == 27:  # ESC key to exit
         print("🛑 Exit requested by user")
         break
+
 
 # ──────── Cleanup ────────
 print("🧹 Cleaning up...")

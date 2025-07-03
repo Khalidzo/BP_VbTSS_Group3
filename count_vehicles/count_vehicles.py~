@@ -70,37 +70,76 @@ class VehicleCounter:
 
         cv2.destroyWindow("Select Line - Click 2 Points and Press ENTER")
 
-    def _count_vehicles(self, track_id, label, current_y):
-        prev_y = self.track_history.get(track_id)
+    def _count_vehicles(self, track_id, label, current_x, current_y):
+        prev_pos = self.track_history.get(track_id)
 
-        if prev_y is not None and track_id not in self.already_counted:
-            y1, y2 = self.line_points[0][1], self.line_points[1][1]
-            line_y = (y1 + y2) // 2
+        if prev_pos is not None and track_id not in self.already_counted:
+            prev_x, prev_y = prev_pos
 
-            if prev_y < line_y <= current_y:
-                # Vehicle moving downward (out)
-                if label == "car":
-                    self.car_out += 1
-                elif label == "truck":
-                    self.truck_out += 1
-                elif label == "motorcycle":
-                    self.motorcycle_out += 1
-                elif label == "bus":
-                    self.bus_out += 1
-                self.already_counted.add(track_id)
-            elif prev_y > line_y >= current_y:
-                # Vehicle moving upward (in)
-                if label == "car":
-                    self.car_in += 1
-                elif label == "truck":
-                    self.truck_in += 1
-                elif label == "motorcycle":
-                    self.motorcycle_in += 1
-                elif label == "bus":
-                    self.bus_in += 1
-                self.already_counted.add(track_id)
+            # Calculate the counting line
+            x1, y1 = self.line_points[0]
+            x2, y2 = self.line_points[1]
 
-        self.track_history[track_id] = current_y
+            # Check if the vehicle trajectory crosses the line
+            if self._line_intersection(prev_x, prev_y, current_x, current_y, x1, y1, x2, y2):
+                # Determine the direction based on the line
+                if self._is_crossing_out(prev_x, prev_y, current_x, current_y, x1, y1, x2, y2):
+                    # Vehicle moving out
+                    if label == "car":
+                        self.car_out += 1
+                    elif label == "truck":
+                        self.truck_out += 1
+                    elif label == "motorcycle":
+                        self.motorcycle_out += 1
+                    elif label == "bus":
+                        self.bus_out += 1
+                    self.already_counted.add(track_id)
+                else:
+                    # Vehicle moving in
+                    if label == "car":
+                        self.car_in += 1
+                    elif label == "truck":
+                        self.truck_in += 1
+                    elif label == "motorcycle":
+                        self.motorcycle_in += 1
+                    elif label == "bus":
+                        self.bus_in += 1
+                    self.already_counted.add(track_id)
+
+        self.track_history[track_id] = (current_x, current_y)
+
+    def _line_intersection(self, x1, y1, x2, y2, x3, y3, x4, y4):
+        """Checks if two lines intersect"""
+        # Line 1: (x1,y1) to (x2,y2) - Vehicle trajectory
+        # Line 2: (x3,y3) to (x4,y4) - Counting line
+
+        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        if abs(denom) < 1e-10:
+            return False  # Lines are parallel
+
+        t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+        u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
+
+        return 0 <= t <= 1 and 0 <= u <= 1
+
+    def _is_crossing_out(self, prev_x, prev_y, curr_x, curr_y, line_x1, line_y1, line_x2, line_y2):
+        """Determines the crossing direction based on the line"""
+        # Calculate the normal vector of the line
+        dx = line_x2 - line_x1
+        dy = line_y2 - line_y1
+
+        # Normal vector (pointing right)
+        nx = -dy
+        ny = dx
+
+        # Movement vector of the vehicle
+        move_x = curr_x - prev_x
+        move_y = curr_y - prev_y
+
+        # Dot product to determine direction
+        dot_product = move_x * nx + move_y * ny
+
+        return dot_product > 0  # True = "out", False = "in"
 
     def _draw_annotations(self, frame, results):
         if len(self.line_points) == 2:
@@ -243,8 +282,9 @@ class VehicleCounter:
 
                     if label in ["car", "truck", "motorcycle", "bus"]:
                         track_id = int(track_id)
+                        current_x = (x1 + x2) // 2
                         current_y = (y1 + y2) // 2
-                        self._count_vehicles(track_id, label, current_y)
+                        self._count_vehicles(track_id, label, current_x, current_y)
 
             annotated_frame = self._draw_annotations(frame, results)
 

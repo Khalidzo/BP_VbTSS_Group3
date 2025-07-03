@@ -19,7 +19,7 @@ from speed_detection.utils import format_detections
 session = "session6_left"
 
 # ──────── Paths & Parameters ────────
-video_path = rf"D:\\2016-ITS-BrnoCompSpeed\\dataset\\{session}\\video.avi"
+video_path = rf"C:\\Users\\yongue-tchanga\\Desktop\\Bp\\BP_VbTSS_Group3\\traffic_analysis\\test.mp4"
 
 # ──────── Initialization ────────
 cap = cv.VideoCapture(video_path)

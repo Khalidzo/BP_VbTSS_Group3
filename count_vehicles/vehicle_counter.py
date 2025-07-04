@@ -28,6 +28,7 @@ class VehicleCounter(VideoFeatureProcessor):
         dt: float,
         detections: Any,
         class_names: dict,
+        frame_count: int
     ) -> np.ndarray:
         """Process frame for vehicle counting and add visualizations"""
         # Process detections and update counts

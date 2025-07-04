@@ -17,6 +17,7 @@ class VideoFeatureProcessor(ABC):
         dt: float,
         detections: Any,
         class_names: dict,
+        frame_count: int,
     ) -> np.ndarray:
         """Processes a frame and returns the modified one."""
         pass

@@ -1,6 +1,7 @@
 from base_feature import VideoFeatureProcessor
+from speed_detection.brnocompspeed import load_ground_truth_data
 from speed_detection.byte_tracker import BYTETracker, Track
-from speed_detection.visualization import draw_rois, draw_tracks
+from speed_detection.visualization import draw_rois, draw_tracks, draw_ground_truth_speeds
 from speed_detection.roi_processing import (
     process_rois_for_frame,
     cleanup_old_vehicle_data,
@@ -18,6 +19,12 @@ def get_rois_from_user(frame, n_rois: int):
     roi_selector.calculate_perspective_transforms(PIXELS_PER_METER)
     return roi_data
 
+# ──────── Evaluate Speed Detection ────────
+json_path =  r"D:\2016-ITS-BrnoCompSpeed\results\session6_center\system_dubska_bmvc14.json"
+pkl_path = r"D:\2016-ITS-BrnoCompSpeed\dataset\session6_center\gt_data.pkl"
+
+json_data = load_ground_truth_data(json_path, pkl_path)
+gt_cars = json_data["cars"]
 
 class SpeedEstimator(VideoFeatureProcessor):
     def __init__(self):
@@ -33,7 +40,7 @@ class SpeedEstimator(VideoFeatureProcessor):
         self.roi_data = get_rois_from_user(first_frame, n_rois)
         self.vehicle_data = {roi["id"]: {} for roi in self.roi_data}
 
-    def process_frame(self, frame, current_time, dt, detections, class_names: dict):
+    def process_frame(self, frame, current_time, dt, detections, class_names: dict, frame_count: int):
         bboxes, scores, class_ids = format_detections(detections)
 
         frame = draw_rois(frame, self.roi_data)
@@ -46,5 +53,6 @@ class SpeedEstimator(VideoFeatureProcessor):
         )
         draw_tracks(frame, tracks, self.roi_data, self.vehicle_data)
         cleanup_old_vehicle_data(self.vehicle_data, tracks, current_time)
+        draw_ground_truth_speeds(frame=frame, frame_count=frame_count, gt_cars=gt_cars)
 
         return frame

@@ -262,7 +262,7 @@ while True:
     # Process features
     for feature in selected_features:
         processed_frame = feature.process_frame(
-            processed_frame, current_time, dt, detections, model.names
+            processed_frame, current_time, dt, detections, model.names, frame_count=frame_count
         )
 
     cv.imshow("Vehicle Feature Processor", processed_frame)

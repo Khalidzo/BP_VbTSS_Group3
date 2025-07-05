@@ -131,7 +131,7 @@ class TrafficJamDetector:
         # Update tracker
         tracked_objects = self.tracker.update(detections=norfair_detections)
 
-        # Simplified jam detection logic
+        # Simplified jam detection logic (like second code)
         zone_stationary_this_frame = [0] * len(self.polygons)
 
         for obj in tracked_objects:
@@ -150,7 +150,7 @@ class TrafficJamDetector:
                         zone_stationary_this_frame[idx] += 1
                     break
 
-        # Update jam detection for each zone
+        # Update jam detection for each zone (simplified logic from second code)
         for idx in range(len(self.polygons)):
             if zone_stationary_this_frame[idx] >= Config.JAM_THRESHOLD:
                 self.zone_stationary_counts[idx] += 1

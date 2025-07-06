@@ -1,0 +1,9 @@
+Cars Out: 0
+Cars In: 0
+Trucks Out: 0
+Trucks In: 0
+Motorcycles Out: 0
+Motorcycles In: 0
+Buses Out: 0
+Buses In: 0
+Total: 0

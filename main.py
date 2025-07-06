@@ -16,6 +16,8 @@ from count_vehicles.config import TRACKER_CONFIG
 from speed_detection.speed_estimator import SpeedEstimator
 from traffic_jam_detection.detect_congestion import CongestionDetector
 from count_vehicles.vehicle_counter import VehicleCounter
+from preprocessing.video_enhancer import VideoEnhancer
+from preprocessing.zoom import FrameZoom
 
 # ──────── Source Selection ────────
 source_type = ListPrompt(
@@ -30,6 +32,7 @@ source_type = ListPrompt(
 if source_type == "live":
     stream_url = InputPrompt(message="Paste live stream URL (.m3u8):").execute()
     cap = cv.VideoCapture(stream_url)
+    video_enhancer = VideoEnhancer(stream_url, [], TARGET_SCREEN_WIDTH)
     VIDEO_FPS = cap.get(cv.CAP_PROP_FPS) or 30  # Fallback if FPS not known
     ret, first_frame = cap.read()
     if not ret:
@@ -130,6 +133,7 @@ else:
 
     print(f"✅ Using video file: {os.path.basename(video_path)}")
     print(f"   Full path: {video_path}")
+    video_enhancer = VideoEnhancer(video_path, [], TARGET_SCREEN_WIDTH)
 
     cap = cv.VideoCapture(video_path)
 
@@ -213,7 +217,11 @@ frame_count = 0
 cap.set(cv.CAP_PROP_POS_FRAMES, 0)
 
 print("🎬 Starting video processing... (Press ESC to exit)")
-
+print(" Press '1' for night enhancement \n Press '2' for fog enhancement \n Press '3' for snow enhancement \n "
+      "Press '4' for sharpness enhancement")
+print(" Press '+' to zoom out \n Press '-' to Zoom in \n Press 'w' to pan up \n Press 's' to pan down \n Press 'd' to pan right "
+      "\n Press 'a' to pan left \n Press 'r' to reset zoom")
+frame_zoomer = FrameZoom()
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -225,15 +233,21 @@ while True:
 
     current_time = frame_count / VIDEO_FPS
     dt = 1.0 / VIDEO_FPS
+    # if zoom in
+    zoomed_frame = frame_zoomer.apply_zoom(frame)
 
+    enhanced_frame = video_enhancer.process_frame(zoomed_frame)
     # Detections
-    detections = model(frame, verbose=False)[0]
+    detections = model(enhanced_frame, verbose=False)[0]
 
     # Tracking
-    model.track(frame, persist=True, **TRACKER_CONFIG)[0]
+    model.track(enhanced_frame, persist=True, **TRACKER_CONFIG)[0]
 
-    processed_frame = frame.copy()
+    processed_frame = enhanced_frame.copy()
+    # Adding Quality Enhancement
 
+    #processed_frame = frame_zoomer.apply_zoom(processed_frame)
+    #processed_frame = video_enhancer.process_frame(processed_frame)
     # Draw bounding boxes for target vehicle classes
     if detections.boxes is not None:
         for i, box in enumerate(detections.boxes):
@@ -266,10 +280,41 @@ while True:
         )
 
     cv.imshow("Vehicle Feature Processor", processed_frame)
-
-    if cv.waitKey(1) & 0xFF == 27:  # ESC key to exit
+    key = cv.waitKey(1) & 0xFF
+    if key == 27:  # ESC key to exit
         print("🛑 Exit requested by user")
         break
+    elif frame_zoomer.handle_keyboard(key):
+        continue
+    elif key == ord('1'):  # Toggle fog removal
+        if 'night' in video_enhancer.filters:
+            print("🌃 night filter removed")
+            video_enhancer.filters.remove('night')
+        else:
+            print("🌃 night filter activated")
+            video_enhancer.filters.append('night')
+    elif key == ord('2'):  # Toggle sharpness
+        if 'fog' in video_enhancer.filters:
+            print("☁️ fog filter removed")
+            video_enhancer.filters.remove('fog')
+        else:
+            print("☁️ fog filter activated")
+            video_enhancer.filters.append('fog')
+    elif key == ord('3'):  # Toggle dust removal
+        if 'snow' in video_enhancer.filters:
+            print("❄️ Snow filter removed")
+            video_enhancer.filters.remove('snow')
+        else:
+            print("❄️ Snow filter activated")
+            video_enhancer.filters.append('snow')
+    elif key == ord('4'):
+        if 'sharpness' in video_enhancer.filters:
+            print("✒️ sharpness filter removed")
+            video_enhancer.filters.remove('sharpness')
+        else:
+            print("✒️ sharpness filter activated")
+            video_enhancer.filters.append('sharpness')
+
 
 
 # ──────── Cleanup ────────

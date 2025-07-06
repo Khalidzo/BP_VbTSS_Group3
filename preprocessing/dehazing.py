@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-# Note: Full Dark Channel Prior implementation is complex for a simple example.
+
 # This function provides a more generalized approach to "dehaze" by enhancing contrast
 # and reducing atmospheric light effects, which can mimic dehazing for snowy conditions.
 

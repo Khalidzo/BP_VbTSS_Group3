@@ -51,9 +51,8 @@ class NightHighwayEnhancer:
         #higher_contrast = self.higher_contrast(denoised)
         #cv2.imshow("higher_contrast", higher_contrast)
         #Step 5: Threshold application
-        threshold = self.adaptative_threshold(denoised)
+        #threshold = self.adaptative_threshold(denoised)
         #cv2.imshow("threshold", threshold)
-
 
         return denoised
 

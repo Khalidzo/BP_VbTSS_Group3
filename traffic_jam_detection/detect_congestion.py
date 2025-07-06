@@ -30,6 +30,7 @@ class CongestionDetector(VideoFeatureProcessor):
             dt: float,
             detections: Any,
             class_names: dict,
+            frame_count: int
     ) -> np.ndarray:
         self.frame_count += 1
 
